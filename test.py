@@ -13,7 +13,7 @@ im_pan = skimage.io.imread('pan8r.tif', plugin='tifffile')
 im_multi = skimage.io.imread('rgb81r.tif', plugin='tifffile')
 
 fusio_valor_medio = vm.fusion_valor_medio_cpu(im_multi, im_pan)
-t = skimage.io.imsave('prueba_test.tif',fusio_valor_medio, plugin ='tifffile')
+t = skimage.io.imsave('fusion_valor_medio.tif',fusio_valor_medio, plugin ='tifffile')
 
 fusion_paso_alto = fpa.fusion_paso_alto_cpu(im_multi, im_pan)
 t = skimage.io.imsave('fusion_paso_alto.tif',fusion_paso_alto, plugin ='tifffile')
