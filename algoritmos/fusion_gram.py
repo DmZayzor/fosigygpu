@@ -40,16 +40,15 @@ def calcular_escalar(fusioned_image):
     matriz_temp = np.empty_like(fusioned_image)
     resultados=[]
     
-    r_k=[[], [0.96839], [1.1296, 0.27436], [0.91708, -0.011501, 0.65783]]
+    
     for n in range(N):
         matriz_temp[:,:,n] = fusioned_image[:,:,n]
         for m in range(n):
             num = np.vdot(fusioned_image[:,:,n], matriz_temp[:,:,m])
             den = np.vdot(matriz_temp[:,:,m], matriz_temp[:,:,m])
             resultado = num/den
-            resultados.append(resultado)
-            posicion=r_k[n][m]
-            matriz_temp[:,:,n] = matriz_temp[:,:,n] - posicion * matriz_temp[:,:,m]
+            resultados.append(resultado)     
+            matriz_temp[:,:,n] = matriz_temp[:,:,n] - resultado * matriz_temp[:,:,m]
     return matriz_temp
 
 def crear_bandas(matriz_temp, pan_float):

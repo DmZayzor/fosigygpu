@@ -7,10 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1XF70BvaNnHv6rSGEBLW5kmP0k7CSp1ha
 """
 
-!pip install pycuda
-!pip install scikit-cuda
-
-!pip install cupy-cuda114
 
 import pycuda.autoinit
 import numpy as np
