@@ -8,8 +8,8 @@ Created on Wed Sep 29 07:53:26 2021
 import numpy as np
 from scipy import ndimage
 
-imagen1 = []
-ceros=[]
+#imagen1 = []
+#ceros=[]
 def fusion_hpf_cpu(im_pan,im_multi):
 
     lista_float = []
