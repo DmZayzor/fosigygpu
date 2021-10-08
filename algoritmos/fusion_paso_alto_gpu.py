@@ -7,7 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1W4SyedDOSRQ4LyS6GRWv1m8VIE2NqCFF
 """
 
-
 import pycuda.autoinit
 import numpy as np
 import skimage.io
@@ -19,10 +18,11 @@ import skcuda.misc as misc
 import skimage
 from pycuda.elementwise import ElementwiseKernel
 
-linalg.init()
+from cupyx.scipy.ndimage import filters
+import cupy as cp
+
 def fusionar_gpu(banda, filtro1, filtro2):
 
-    print("entro a fusionar gpu")
     filtro1_gpu = gpuarray.to_gpu(filtro1)
     filtro2_gpu = gpuarray.to_gpu(filtro2)
     banda_gpu = gpuarray.to_gpu(banda)
@@ -33,8 +33,7 @@ def fusionar_gpu(banda, filtro1, filtro2):
     return fusion_gpu.get()
 
 def ajustar_valores_negativos(matrix):
-  
-    print("entró a ajustar valores")
+
     matrix_gpu = gpuarray.to_gpu(matrix)
     matrix_gpu_new = gpuarray.empty_like(matrix_gpu)
 
@@ -62,25 +61,33 @@ filtro1 = np.array([[-1, -1, -1],[-1, 9, -1],[-1, -1, -1]]) * (1/9)
 filtro2 = np.array([[1, 1, 1],[1, 1, 1],[1, 1, 1]]) * (1/9)
 
 def fusion_paso_alto_gpu(multi, pan):
-
+    linalg.init()
     listaunion = []
     n_bandas = int(multi.shape[2])
     double_pan = pan.astype(np.float32)
 
-    imagen1 = ndimage.correlate(double_pan, filtro1, mode='constant')
-    imagen2 = ndimage.correlate(double_pan, filtro2, mode='constant')
+    filtro1_cp = cp.array(filtro1)
+    filtro2_cp = cp.array(filtro2)
+    pan_cp = cp.array(double_pan)
 
-    imagen1=ajustar_valores_negativos(imagen1)
-    imagen2=ajustar_valores_negativos(imagen2)
+    imagen1_cp = filters.correlate(pan_cp, filtro1_cp, mode='constant')
+    imagen1_cpu = imagen1_cp.get()
 
-    double_imagen1 = imagen1.astype(np.float32)
-    double_imagen2 = imagen2.astype(np.float32)
+    imagen1_gpu = gpuarray.to_gpu(imagen1_cpu)
+
+    imagen2_cp = filters.correlate(pan_cp, filtro2_cp, mode='constant')
+    imagen2_cpu = imagen2_cp.get()
+    imagen2_gpu = gpuarray.to_gpu(imagen2_cpu)
+
+    imagen1_validada = ajustar_valores_negativos(imagen1_gpu.astype(np.float32))
+    imagen2_validada = ajustar_valores_negativos(imagen2_gpu.astype(np.float32))
 
     i = 0
     while i < n_bandas:
         banda = multi[:,:,i]
         banda_float = banda.astype(np.float32)
-        fusionbandas = fusionar_gpu(banda_float, double_imagen1, double_imagen2)
+        fusionbandas = fusionar_gpu(banda_float, imagen1_validada, imagen2_validada)
+
         fusionbandas = ajustar_valores_mayores(fusionbandas)
         to_image = fusionbandas.astype(np.uint8)
         listaunion.append(to_image)

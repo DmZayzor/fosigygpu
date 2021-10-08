@@ -6,7 +6,7 @@ Created on Thu Sep 23 08:31:01 2021
 import skimage.io
 
 #from algoritmos import ValorMedio as vm
-#from algoritmos import Fusionpasoalto as fpa
+#from algoritmos import fusion_paso_alto as fpa
 #from algoritmos import fusiongram as fg
 from algoritmos import fusion_hpf as fh
 #from metricas import measures as ms

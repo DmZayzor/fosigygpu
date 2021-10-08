@@ -7,7 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1XF70BvaNnHv6rSGEBLW5kmP0k7CSp1ha
 """
 
-
 import pycuda.autoinit
 import numpy as np
 import skimage.io
@@ -17,6 +16,8 @@ import pycuda.gpuarray as gpuarray
 import skcuda.misc as misc
 import skimage
 from pycuda.elementwise import ElementwiseKernel
+from cupyx.scipy.ndimage import filters
+import cupy as cp
 
 def fusion_hpf_gpu(im_pan,im_multi):
 
@@ -47,10 +48,14 @@ def crear_filtro(double_pan):
     [-1, -1, -1, -1, -1, -1, -1, -1, -1],
     [-1, -1, -1, -1, -1, -1, -1, -1, -1],
     [-1, -1, -1, -1, -1, -1, -1, -1, -1]])*(1/106);
-
-    imagen1 = ndimage.correlate(double_pan, filtro, mode='constant')
-    double_imagen1 = imagen1.astype(np.float32)
-    imagen1 = ajustar_valores_negativos(double_imagen1)
+    
+    pan_cp = cp.array(double_pan)
+    filtro_cp = cp.array(filtro)
+    imagen_cp = filters.correlate(pan_cp, filtro_cp, mode='constant')
+    imagen_cpu = imagen_cp.get()
+    double_imagen_cpu = imagen_cpu.astype(np.float32)
+    imagen1 = ajustar_valores_negativos(imagen_cpu)
+    
     return imagen1
 
 def ajustar_valores_negativos(matrix):
