@@ -34,10 +34,9 @@ def crear_multi(im_multi):
     fusioned_image = np.stack((lista_union),axis = 2)
     return fusioned_image
 
-def fusionar_multi_con_info(rgb,data):
+def fusionar_con_info(rgb,data,bandas,name):
 
     info = gdal.Info(data)
-    bandas = rgb.shape[2]
     cols = data.RasterXSize
     rows = data.RasterYSize
     origen = data.GetGeoTransform()
@@ -47,16 +46,18 @@ def fusionar_multi_con_info(rgb,data):
     pixelHeight=origen[5]
     driver = gdal.GetDriverByName("GTiff")
     proy = data.GetProjection()
-    name = "rgb8.tif"
     outRaster = driver.Create(name, cols, rows, bandas, gdal.GDT_Byte)
     outRaster.SetGeoTransform((origenX, pixelWidth, origen[2], origenY,origen[4], pixelHeight))
-    
-    for i in range(bandas):
-        band = i+1
-        banda = rgb[:,:,i]
-        outRaster.GetRasterBand(band).WriteArray(banda)
-        outRaster.GetRasterBand(band).SetNoDataValue(np.nan)
-        i = i+1
+    if bandas ==1:
+        outRaster.GetRasterBand(1).WriteArray(rgb)
+        outRaster.GetRasterBand(1).SetNoDataValue(np.nan)
+    else:
+        for i in range(bandas):
+            band = i+1
+            banda = rgb[:,:,i]
+            outRaster.GetRasterBand(band).WriteArray(banda)
+            outRaster.GetRasterBand(band).SetNoDataValue(np.nan)
+            i = i+1
     
     s_ref = osr.SpatialReference()
     s_ref.ImportFromWkt(proy)
@@ -71,30 +72,6 @@ def crear_pancro(im_pan):
     banda_imagen = banda_gray.astype(np.uint8)
     fusioned_image = banda_imagen
     return fusioned_image
-
-def fusionar_pancro_con_info(rgb,data):
-  
-    bandas = 1
-    cols = data.RasterXSize
-    rows = data.RasterYSize
-    origen = data.GetGeoTransform()
-    origenX = origen[0]
-    origenY = origen[3]
-    pixelWidth=origen[1]
-    pixelHeight=origen[5]
-    driver = gdal.GetDriverByName("GTiff")
-    proy = data.GetProjection()
-
-    outRaster = driver.Create("pan8.tif", cols, rows, bandas, gdal.GDT_Byte)
-    outRaster.SetGeoTransform((origenX, pixelWidth, origen[2], origenY,origen[4], pixelHeight))
-    outRaster.GetRasterBand(1).WriteArray(rgb)
-    outRaster.GetRasterBand(1).SetNoDataValue(np.nan)
-    
-    s_ref = osr.SpatialReference()
-    s_ref.ImportFromWkt(proy)
-    outRaster.SetProjection(s_ref.ExportToWkt())
-    outRaster.FlushCache()
-    return outRaster
 
 def multiplicar_pixel(rgb):
 
@@ -126,8 +103,7 @@ def multiplicar_pixel(rgb):
         band_list.append(band_uint)
         
     fusioned_image = np.stack((band_list),axis = 2)
-    plt.imshow(fusioned_image)
-    nombre = "csizepixelmult.tif"
+    nombre = "multi.tif"
     expansion_multi, origen = fusionar_expansion_con_info(fusioned_image,nombre,new_multi,old_pixel)
 
     return fusioned_image, origen, new_pixel
@@ -163,7 +139,7 @@ def fusionar_expansion_con_info(rgb,name,data,pixel):
     outRaster.FlushCache()
     return outRaster,origen
 
-def igualar_rgb(multi,p):
+def igualar_rgb(multi,p,data):
 
     n_bandas = multi.shape[2]
     izquierda = 310*4
@@ -181,9 +157,9 @@ def igualar_rgb(multi,p):
         banda_int = banda_array.astype(np.uint8)
         lista_union.append(banda_int)
         i=i+1
-
+    nombre = "multi_con_info.tif"
     fusioned_image = np.stack((lista_union),axis = 2)
-    plt.imshow(fusioned_image)
+    fusioned_con_info , origen= fusionar_expansion_con_info(fusioned_image,nombre,data,p)
     return fusioned_image
 
 def dibujar_recuadro(im):
@@ -202,7 +178,6 @@ def dibujar_recuadro(im):
                  fill = False)
 
     ax.add_patch(rect)
-    plt.imshow(im)
     xIntrinsic=[coor_x , (coor_x + ancho)]
     yIntrinsic=[(coor_y + alto) , coor_y]
 
@@ -221,11 +196,14 @@ def recortar_rgb(x,y,origen,dimen,h,w,p,rgb):
     derecha = izquierda + w
     abajo = arriba + h
     rgb_rec = rgb.crop((izquierda, arriba, derecha, abajo))
-    plt.imshow(rgb_rec)
     recorte_float = np.array(rgb_rec)
     recorte_int = recorte_float.astype(np.uint8)
     recorte_rgb = np.stack((recorte_int),axis = 2)
     recorte_rgb_invertido = recorte_rgb.transpose((-1, -3, -2))
+    nombre="multirec.tif"
+    data=gdal.Open("multi_con_info.tif")
+    bandas=recorte_rgb_invertido.shape[2]
+    fusionar=fusionar_recorte_con_info(recorte_rgb_invertido,nombre,data,new_xworld,new_yworld,bandas)
     return recorte_rgb_invertido
 
 def recortar_pan(x,y,origen,dimen,h,w,p,pan):
@@ -241,17 +219,53 @@ def recortar_pan(x,y,origen,dimen,h,w,p,pan):
     abajo = arriba + h
 
     pan_rec = pan.crop((izquierda, arriba, derecha,abajo))
-    plt.imshow(pan_rec)
     recorte_float = np.array(pan_rec)
     recorte_int = recorte_float.astype(np.uint8)
     
+    nombre="panrec.tif"
+    data=gdal.Open("multi_con_info.tif")
+    bandas=1
+    fusionar=fusionar_recorte_con_info(recorte_int,nombre,data,new_xworld,new_yworld,bandas)
     return recorte_int
 
-def expandir_recorte_rgb(rgb,pan,pixel): 
+def fusionar_recorte_con_info(rgb,name,data,x,y,b):
+  
+    cols = data.RasterXSize
+    rows = data.RasterYSize
+    origen = data.GetGeoTransform()
+    print(origen)
+    origenX = origen[0]
+    origenY = origen[3]
+    pixelWidth=origen[1]
+    pixelHeight=origen[5]
+    driver = gdal.GetDriverByName("GTiff")
+    proy = data.GetProjection()
+
+    outRaster = driver.Create(name, cols, rows, b, gdal.GDT_Byte)
+    outRaster.SetGeoTransform((origenX, pixelWidth, x[1], origenY,y[0], pixelHeight))
+    if b == 1:
+        outRaster.GetRasterBand(1).WriteArray(rgb)
+        outRaster.GetRasterBand(1).SetNoDataValue(np.nan)
+    else:
+        for i in range(b):
+            band = i+1
+            banda = rgb[:,:,i]
+            outRaster.GetRasterBand(band).WriteArray(banda)
+            outRaster.GetRasterBand(band).SetNoDataValue(np.nan)
+            i = i+1
+    
+    s_ref = osr.SpatialReference()
+    s_ref.ImportFromWkt(proy)
+    outRaster.SetProjection(s_ref.ExportToWkt())
+    outRaster.FlushCache()
+    return outRaster
+
+def expandir_recorte_rgb(rgb,pixel): 
     filas = rgb.shape[0]
     colum = rgb.shape[1]
     bands = rgb.shape[2]
 
+    print("filas",filas, "colum", colum,"bands",bands)
     b = 0
     extend_band = np.zeros((filas*pixel,colum*pixel))
     band_list =[]
@@ -273,9 +287,37 @@ def expandir_recorte_rgb(rgb,pan,pixel):
 def crear_imagenes(rgb,data_rgb,pan,data_pan):
 
     new_rgb = crear_multi(rgb)
-    multi_con_info = fusionar_multi_con_info(new_rgb,data_rgb)
+    bandas_rgb=new_rgb.shape[2]
+    name_rgb="rgb8.tif"
+    multi_con_info = fusionar_con_info(new_rgb,data_rgb,bandas_rgb,name_rgb)
     new_pan = crear_pancro(pan)
-    pan_con_info = fusionar_pancro_con_info(new_pan,data_pan)
+    
+    bandas_pan=1
+    name_pan="pan8.tif"
+    pan_con_info = fusionar_con_info(new_pan,data_pan,bandas_pan,name_pan)
     pixel_multiplicado, origen, pixel = multiplicar_pixel(new_rgb)
     return pixel_multiplicado,origen,pixel
 
+inicial_rgb = skimage.io.imread('rgbikonos.tif', plugin='tifffile')
+data_rgb = gdal.Open("rgbikonos.tif")
+inicial_pan = skimage.io.imread('ikonospanrecorte.tif', plugin='tifffile')
+data_pan = gdal.Open("ikonospanrecorte.tif")
+pixel_multiplicado,origen,pixel=crear_imagenes(inicial_rgb,data_rgb,inicial_pan,data_pan)
+
+multi = skimage.io.imread('multi.tif', plugin='tifffile')
+data_multi = gdal.Open("multi.tif")
+rgb_igualada = igualar_rgb(multi,pixel,data_multi)
+
+
+rgb=Image.open("multi_con_info.tif")
+xIntrinsic, yIntrinsic, H, W = dibujar_recuadro(rgb)
+rgb_rec = recortar_rgb(xIntrinsic,yIntrinsic,origen,pixel_multiplicado,H,W,pixel,rgb)
+dibujar_rgb_rec = skimage.io.imsave('multirec.tif',rgb_rec, plugin ='tifffile')
+
+pan=Image.open("pan8.tif")
+pan_rec = recortar_pan(xIntrinsic,yIntrinsic,origen,pixel_multiplicado,H,W,pixel,pan)
+dibujar_rgb_rec = skimage.io.imsave('panrec.tif',pan_rec, plugin ='tifffile')
+
+recorte_rgb = skimage.io.imread('multirec1.tif', plugin='tifffile')
+rgb_rec_final = expandir_recorte_rgb(recorte_rgb,pixel)
+dibujar_rec_final_rgb = skimage.io.imsave('rgbdef.tif',rgb_rec_final, plugin ='tifffile')
