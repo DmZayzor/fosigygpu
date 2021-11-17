@@ -7,6 +7,7 @@ Created on Sat Sep 25 18:40:28 2021
 
 import numpy as np
 
+
 resultados=[]
 
 def fusion_gram_cpu(im_multi, im_pan):
@@ -38,8 +39,6 @@ def calcular_escalar(fusioned_image):
     global resultados
     N = int(fusioned_image.shape[2])
     matriz_temp = np.empty_like(fusioned_image)
-    resultados=[]
-    
     
     for n in range(N):
         matriz_temp[:,:,n] = fusioned_image[:,:,n]
@@ -64,6 +63,7 @@ def crear_bandas(matriz_temp, pan_float):
     lista_imagen.insert(0, pan_float)
     matriz_temp = np.stack((lista_imagen),axis = 2)
     return matriz_temp
+
 
 def fusion_bandas(matriz_temp):
     global resultados

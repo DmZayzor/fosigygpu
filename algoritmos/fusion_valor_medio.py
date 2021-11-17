@@ -25,4 +25,5 @@ def fusion_valor_medio_cpu(im_multi, im_pan):
         i=i+1
 
     fusioned_image = np.stack((listaunion),axis = 2)
+    
     return fusioned_image
