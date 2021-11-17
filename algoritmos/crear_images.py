@@ -297,27 +297,4 @@ def crear_imagenes(rgb,data_rgb,pan,data_pan):
     pan_con_info = fusionar_con_info(new_pan,data_pan,bandas_pan,name_pan)
     pixel_multiplicado, origen, pixel = multiplicar_pixel(new_rgb)
     return pixel_multiplicado,origen,pixel
-
-inicial_rgb = skimage.io.imread('rgbikonos.tif', plugin='tifffile')
-data_rgb = gdal.Open("rgbikonos.tif")
-inicial_pan = skimage.io.imread('ikonospanrecorte.tif', plugin='tifffile')
-data_pan = gdal.Open("ikonospanrecorte.tif")
-pixel_multiplicado,origen,pixel=crear_imagenes(inicial_rgb,data_rgb,inicial_pan,data_pan)
-
-multi = skimage.io.imread('multi.tif', plugin='tifffile')
-data_multi = gdal.Open("multi.tif")
-rgb_igualada = igualar_rgb(multi,pixel,data_multi)
-
-
-rgb=Image.open("multi_con_info.tif")
-xIntrinsic, yIntrinsic, H, W = dibujar_recuadro(rgb)
-rgb_rec = recortar_rgb(xIntrinsic,yIntrinsic,origen,pixel_multiplicado,H,W,pixel,rgb)
-dibujar_rgb_rec = skimage.io.imsave('multirec.tif',rgb_rec, plugin ='tifffile')
-
-pan=Image.open("pan8.tif")
-pan_rec = recortar_pan(xIntrinsic,yIntrinsic,origen,pixel_multiplicado,H,W,pixel,pan)
-dibujar_rgb_rec = skimage.io.imsave('panrec.tif',pan_rec, plugin ='tifffile')
-
-recorte_rgb = skimage.io.imread('multirec1.tif', plugin='tifffile')
-rgb_rec_final = expandir_recorte_rgb(recorte_rgb,pixel)
-dibujar_rec_final_rgb = skimage.io.imsave('rgbdef.tif',rgb_rec_final, plugin ='tifffile')
+    
